@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg:        #e3d6bc;
+  --color-surface:   #ede3ce;
+  --color-surface-2: #f5efe0;
+  --color-border:    #cfc4aa;
+  --color-muted:     #9e8e78;
+  --color-text:      #111111;
+  --color-text-sub:  #555555;
+  --color-accent:    #4e8565;
+  --color-sidebar:   #d6c9ae;
+  --color-sidebar-hover: #cbbfa4;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Dosis", sans-serif;
+}
