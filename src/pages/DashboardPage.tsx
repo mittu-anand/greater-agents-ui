@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getFarms, getAgents } from "../api/client";
+import { getFarms, getAgents, getAllAgents } from "../api/client";
 import { useEventStore } from "../store/useEventStore";
 import { LoadingSkeleton, EmptyState, Button } from "../components/ui";
 import { timeAgo } from "../lib/time";
@@ -38,6 +38,11 @@ function FarmRow({ farm }: { farm: Farm }) {
 export default function DashboardPage() {
   const events = useEventStore((s) => s.events);
   const { data: farms, isLoading, error, refetch } = useQuery({ queryKey: ["farms"], queryFn: getFarms });
+  const { data: allAgents } = useQuery({ queryKey: ["agents-all"], queryFn: () => getAllAgents() });
+
+  const totalAgents  = allAgents?.length ?? 0;
+  const running      = allAgents?.filter((a) => a.status === "running").length ?? 0;
+  const errors       = allAgents?.filter((a) => a.status === "error").length ?? 0;
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -56,9 +61,9 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <StatCard label="Total Farms"  value={farms?.length ?? 0} icon={Server} />
-        <StatCard label="Total Agents" value={0}                  icon={Bot} />
-        <StatCard label="Running"      value={0}                  icon={Activity} />
-        <StatCard label="Errors"       value={0}                  icon={AlertCircle} />
+        <StatCard label="Total Agents" value={totalAgents}         icon={Bot} />
+        <StatCard label="Running"      value={running}             icon={Activity} />
+        <StatCard label="Errors"       value={errors}              icon={AlertCircle} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">

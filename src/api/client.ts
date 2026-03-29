@@ -1,14 +1,19 @@
 import type { Farm, Agent, Server, Credential, LLM, Tool, AgentRun, LogLine, McpServer, McpHealthResult, OpenApiSpec, OpenApiEndpoint, AgentSkill } from "../types";
+import { useAuthStore } from "../store/useAuthStore";
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = useAuthStore.getState().token;
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
     ...init,
   });
   if (!res.ok) {
-    // Try to get the detail message from FastAPI error response
     let detail = `${res.status} ${res.statusText}`;
     try {
       const body = await res.json();
@@ -40,6 +45,7 @@ export const assignAgent    = (id: string, d: { farm_id: string; environment_id?
 export const unassignAgent  = (id: string)             => req<Agent>(`/api/agents/${id}/assign`, { method: "DELETE" });
 export const getAgentRuns   = (id: string)             => req<AgentRun[]>(`/api/agents/${id}/runs`);
 export const getAgentLogs   = (id: string, n = 500)    => req<LogLine[]>(`/api/agents/${id}/logs?limit=${n}`);
+export const getAgentDockerLogs = (id: string, n = 200) => req<{ logs: Array<{ts: string; level: string; message: string}>; container: string; error?: string }>(`/api/agents/${id}/docker-logs?lines=${n}`);
 export const getAgentSkills = (id: string)             => req<AgentSkill[]>(`/api/agents/${id}/skills`);
 export const applySkill     = (agentId: string, skillId: string, d?: unknown) => req<Agent>(`/api/agents/${agentId}/skills/${skillId}`, { method: "POST", body: JSON.stringify(d ?? {}) });
 export const removeSkill    = (agentId: string, skillId: string) => req<Agent>(`/api/agents/${agentId}/skills/${skillId}`, { method: "DELETE" });

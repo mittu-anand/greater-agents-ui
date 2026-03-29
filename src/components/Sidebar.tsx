@@ -50,7 +50,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex flex-col flex-1 p-2 pt-3 overflow-y-auto">
         {/* Dashboard */}
-        <NavLink to="/" end title={!expanded ? "Dashboard" : undefined}
+        <NavLink to="/dashboard" end title={!expanded ? "Dashboard" : undefined}
           className={({ isActive }) =>
             `flex items-center rounded-lg transition-colors mb-2 ${expanded ? "gap-3 px-3 py-2" : "justify-center p-2.5"}
              ${isActive ? "bg-(--color-accent) text-white" : "text-(--color-text-sub) hover:bg-(--color-sidebar-hover) hover:text-(--color-text)"}`}>

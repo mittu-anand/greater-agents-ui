@@ -6,7 +6,7 @@ import {
   getFarm, getAgents, getAllAgents, getServers, getCredentials,
   updateFarm, deleteFarm, createServer, deleteServer,
   testServer, setMaintenance, createCredential,
-  testCredential, deleteCredential, stopAgent, unassignAgent,
+  testCredential, deleteCredential, unassignAgent,
 } from "../api/client";
 import {
   LoadingSkeleton, ErrorCard, EmptyState, Tabs, Badge, StatusDot,
@@ -15,7 +15,7 @@ import {
 import { timeAgo } from "../lib/time";
 import {
   Plus, Bot, Server, Key, Trash2, StopCircle,
-  AlertCircle, Terminal, Loader2, CheckCircle, XCircle, LogOut,
+  AlertCircle, Terminal, Loader2, CheckCircle, XCircle, LogOut, RefreshCw,
 } from "lucide-react";
 
 const TABS = ["Agents", "Servers", "Credentials", "Settings"];
@@ -67,7 +67,19 @@ const STAGE_PREFIX: Record<Stage, string> = {
   info: "›", cmd: "$", log: " ", success: "✓", error: "✗", done: "✓",
 };
 
-function DeployTerminal({ agentId, agentName, onDone }: { agentId: string; agentName: string; onDone: () => void }) {
+function AgentTerminal({
+  agentId,
+  agentName,
+  wsPath,
+  title,
+  onDone,
+}: {
+  agentId: string;
+  agentName: string;
+  wsPath: string; // e.g. "deploy" | "stop" | "restart"
+  title: string;
+  onDone: () => void;
+}) {
   const [lines, setLines] = useState<{ stage: Stage; message: string }[]>([]);
   const [status, setStatus] = useState<"connecting" | "running" | "done" | "error">("connecting");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -81,16 +93,16 @@ function DeployTerminal({ agentId, agentName, onDone }: { agentId: string; agent
     const add = (stage: Stage, message: string) =>
       setLines(prev => [...prev, { stage, message }]);
 
-    add("info", `Starting deploy for "${agentName}"…`);
-    const ws = new WebSocket(`ws://${window.location.host}/ws/agents/${agentId}/deploy`);
+    add("info", `${title} "${agentName}"…`);
+    const ws = new WebSocket(`ws://${window.location.host}/ws/agents/${agentId}/${wsPath}`);
     wsRef.current = ws;
 
-    ws.onopen = () => { setStatus("running"); add("info", "Connected to deploy stream"); };
+    ws.onopen = () => { setStatus("running"); add("info", "Connected"); };
     ws.onmessage = (ev) => {
       try {
         const e = JSON.parse(ev.data) as { stage: Stage; message: string };
         add(e.stage, e.message);
-        if (e.stage === "done")  { setStatus("done");  setTimeout(onDone, 1500); }
+        if (e.stage === "done")  { setStatus("done");  setTimeout(onDone, 1000); }
         if (e.stage === "error") { setStatus("error"); }
       } catch { add("log", ev.data); }
     };
@@ -101,13 +113,13 @@ function DeployTerminal({ agentId, agentName, onDone }: { agentId: string; agent
       }
     };
     return () => ws.close();
-  }, [agentId]);
+  }, [agentId, wsPath]);
 
   return (
-    <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
+    <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden mt-3">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800 bg-gray-900">
         <Terminal size={13} className="text-gray-400" />
-        <span className="text-xs text-gray-400 font-mono">{agentName}</span>
+        <span className="text-xs text-gray-400 font-mono">{title} · {agentName}</span>
         <div className="ml-auto">
           {status === "connecting" && <Loader2 size={12} className="animate-spin text-gray-400" />}
           {status === "running"    && <Loader2 size={12} className="animate-spin text-blue-400" />}
@@ -115,7 +127,7 @@ function DeployTerminal({ agentId, agentName, onDone }: { agentId: string; agent
           {status === "error"      && <XCircle size={12} className="text-red-400" />}
         </div>
       </div>
-      <div className="p-4 h-64 overflow-y-auto font-mono text-xs leading-5">
+      <div className="p-4 h-48 overflow-y-auto font-mono text-xs leading-5">
         {lines.map((l, i) => (
           <div key={i} className="flex gap-2">
             <span className={`shrink-0 w-3 ${STAGE_COLOR[l.stage]}`}>{STAGE_PREFIX[l.stage]}</span>
@@ -137,6 +149,7 @@ function AgentsTab({ farmId }: { farmId: string }) {
   // Agents assigned to this farm
   const { data: agents, isLoading, error, refetch } = useQuery({
     queryKey: ["agents", farmId], queryFn: () => getAgents(farmId),
+    refetchInterval: 30_000,  // sync with health monitor poll interval
   });
   // All draft agents (unassigned) for the assign modal
   const { data: allAgents } = useQuery({
@@ -146,7 +159,7 @@ function AgentsTab({ farmId }: { farmId: string }) {
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignId, setAssignId] = useState("");
-  const [deployingId, setDeployingId] = useState<string | null>(null);
+  const [terminalOp, setTerminalOp] = useState<{ id: string; op: "deploy" | "stop" | "restart" } | null>(null);
   const [unassignId, setUnassignId] = useState<string | null>(null);
 
   const assignMut = useMutation({
@@ -158,12 +171,6 @@ function AgentsTab({ farmId }: { farmId: string }) {
       setAssignId("");
       toast(`"${agent.name}" assigned to farm`);
     },
-    onError: (e) => toast((e as Error).message, "error"),
-  });
-
-  const stopMut = useMutation({
-    mutationFn: stopAgent,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["agents", farmId] }); toast("Agent stopped"); },
     onError: (e) => toast((e as Error).message, "error"),
   });
 
@@ -217,19 +224,31 @@ function AgentsTab({ farmId }: { farmId: string }) {
                 </div>
                 {/* Actions */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {agent.status === "stopped" && (
-                    <Button size="sm" onClick={() => setDeployingId(agent.id)}>Deploy</Button>
+                  {agent.status === "stopped" && !terminalOp && (
+                    <Button size="sm" onClick={() => setTerminalOp({ id: agent.id, op: "deploy" })}>Deploy</Button>
                   )}
-                  {agent.status === "running" && (
-                    <Button size="sm" variant="outline" onClick={() => stopMut.mutate(agent.id)}
-                      disabled={stopMut.isPending}>
-                      <StopCircle size={13} /> Stop
-                    </Button>
+                  {agent.status === "running" && !terminalOp && (
+                    <>
+                      <Button size="sm" variant="outline"
+                        onClick={() => setTerminalOp({ id: agent.id, op: "restart" })}>
+                        <RefreshCw size={13} /> Restart
+                      </Button>
+                      <Button size="sm" variant="outline"
+                        onClick={() => setTerminalOp({ id: agent.id, op: "stop" })}>
+                        <StopCircle size={13} /> Stop
+                      </Button>
+                    </>
                   )}
-                  {agent.status === "error" && (
-                    <Button size="sm" onClick={() => setDeployingId(agent.id)}>Retry Deploy</Button>
+                  {agent.status === "error" && !terminalOp && (
+                    <Button size="sm" onClick={() => setTerminalOp({ id: agent.id, op: "deploy" })}>Retry Deploy</Button>
                   )}
-                  {(agent.status === "stopped" || agent.status === "draft") && (
+                  {terminalOp?.id === agent.id && (
+                    <span className="text-xs text-(--color-muted) flex items-center gap-1">
+                      <Loader2 size={11} className="animate-spin" />
+                      {terminalOp.op}…
+                    </span>
+                  )}
+                  {(agent.status === "stopped" || agent.status === "draft") && !terminalOp && (
                     <button
                       onClick={() => setUnassignId(agent.id)}
                       title="Return to library"
@@ -241,15 +260,17 @@ function AgentsTab({ farmId }: { farmId: string }) {
                 </div>
               </div>
 
-              {/* Inline deploy terminal */}
-              {deployingId === agent.id && (
-                <DeployTerminal
+              {/* Inline terminal for deploy/stop/restart */}
+              {terminalOp?.id === agent.id && (
+                <AgentTerminal
                   agentId={agent.id}
                   agentName={agent.name}
+                  wsPath={terminalOp.op}
+                  title={terminalOp.op.charAt(0).toUpperCase() + terminalOp.op.slice(1)}
                   onDone={() => {
-                    setDeployingId(null);
+                    setTerminalOp(null);
                     qc.invalidateQueries({ queryKey: ["agents", farmId] });
-                    toast(`"${agent.name}" deployed`);
+                    toast(`"${agent.name}" ${terminalOp.op} complete`);
                   }}
                 />
               )}
@@ -307,7 +328,7 @@ function AgentsTab({ farmId }: { farmId: string }) {
       {unassignId && (
         <ConfirmDialog
           message={`Return "${agents?.find(a => a.id === unassignId)?.name}" to the library? It will be undeployed.`}
-          onConfirm={() => unassignMut.mutate(unassignId)}
+          onConfirm={() => { const id = unassignId!; setUnassignId(null); unassignMut.mutate(id); }}
           onCancel={() => setUnassignId(null)}
         />
       )}
@@ -555,7 +576,14 @@ function CredentialsTab({ farmId }: { farmId: string }) {
 // ── Settings Tab ──────────────────────────────────────────────────────────────
 function SettingsTab({ farm, onDeleted }: { farm: import("../types").Farm; onDeleted: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ name: farm.name, description: farm.description });
+  const [form, setForm] = useState({
+    name: farm.name,
+    description: farm.description,
+    deploy_strategy: farm.deploy_strategy ?? "build",
+    docker_image: farm.docker_image ?? "",
+    registry_user: farm.registry_user ?? "",
+    registry_token: "",  // never pre-fill token
+  });
   const [confirm, setConfirm] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -570,6 +598,54 @@ function SettingsTab({ farm, onDeleted }: { farm: import("../types").Farm; onDel
       <div className="bg-(--color-surface) border border-(--color-border) rounded-xl p-6 flex flex-col gap-4">
         <Input label="Farm Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
         <Textarea label="Description" rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+
+        {/* Deploy strategy */}
+        <div>
+          <label className="text-xs font-medium text-(--color-text-sub) block mb-2">Deploy Strategy</label>
+          <div className="flex gap-3">
+            {(["build", "pull"] as const).map((s) => (
+              <button key={s} onClick={() => setForm((f) => ({ ...f, deploy_strategy: s }))}
+                className={`flex-1 px-4 py-3 rounded-xl border text-sm font-medium text-left transition-colors ${
+                  form.deploy_strategy === s
+                    ? "border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)"
+                    : "border-(--color-border) text-(--color-text) hover:border-(--color-text)"
+                }`}>
+                <p className="font-semibold">{s === "build" ? "Build on server" : "Pull from registry"}</p>
+                <p className="text-xs text-(--color-muted) mt-0.5 font-normal">
+                  {s === "build" ? "Clone repo & docker build (slower, no registry needed)" : "docker pull pre-built image (fast, requires registry)"}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {form.deploy_strategy === "pull" && (
+          <div className="flex flex-col gap-3 p-4 bg-(--color-bg) border border-(--color-border) rounded-xl">
+            <Input
+              label="Docker Image URL"
+              value={form.docker_image}
+              onChange={(e) => setForm((f) => ({ ...f, docker_image: e.target.value }))}
+              placeholder="ghcr.io/your-org/agent-service:latest"
+            />
+            <Input
+              label="Registry Username"
+              value={form.registry_user}
+              onChange={(e) => setForm((f) => ({ ...f, registry_user: e.target.value }))}
+              placeholder="your-username"
+            />
+            <Input
+              label="Registry Token / Password"
+              type="password"
+              value={form.registry_token}
+              onChange={(e) => setForm((f) => ({ ...f, registry_token: e.target.value }))}
+              placeholder="Leave blank to keep existing"
+            />
+            <p className="text-xs text-(--color-muted)">
+              For GitHub Container Registry: use a Personal Access Token with <code className="bg-(--color-border) px-1 rounded">read:packages</code> scope.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div><p className="text-xs text-(--color-muted) mb-1">Target Type</p><p className="text-(--color-text)">{farm.target_type}</p></div>
           <div><p className="text-xs text-(--color-muted) mb-1">Created</p><p className="text-(--color-text)">{timeAgo(farm.created_at)}</p></div>
