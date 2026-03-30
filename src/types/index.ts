@@ -11,6 +11,10 @@ export interface Farm {
   name: string;
   description: string;
   target_type: TargetType;
+  deploy_strategy: "build" | "pull";
+  docker_image: string;
+  registry_user: string;
+  registry_token: string;
   created_at: string;
 }
 

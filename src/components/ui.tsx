@@ -52,17 +52,40 @@ export function Textarea({ label, error, className = "", ...p }: TAProps) {
 
 // ── Select ────────────────────────────────────────────────────────────────────
 import type { SelectHTMLAttributes } from "react";
+import { ChevronDown } from "lucide-react";
 type SelProps = SelectHTMLAttributes<HTMLSelectElement> & { label?: string };
 export function Select({ label, children, className = "", ...p }: SelProps) {
   return (
     <div className="flex flex-col gap-1">
       {label && <label className="text-xs font-medium text-(--color-text-sub)">{label}</label>}
+      <div className="relative">
+        <select
+          {...p}
+          className={`w-full appearance-none bg-(--color-surface) border border-(--color-border) rounded-xl px-3.5 py-2.5 pr-10 text-sm text-(--color-text) font-medium focus:outline-none focus:ring-2 focus:ring-(--color-accent) focus:border-(--color-accent) cursor-pointer transition-colors hover:border-(--color-text) ${className}`}
+        >
+          {children}
+        </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-muted)">
+          <ChevronDown size={15} strokeWidth={2} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── StyledSelect — inline select without label wrapper ────────────────────────
+export function StyledSelect({ className = "", children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative inline-flex">
       <select
         {...p}
-        className={`w-full bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent) ${className}`}
+        className={`appearance-none bg-(--color-surface) border border-(--color-border) rounded-xl pl-3.5 pr-9 py-2 text-sm text-(--color-text) font-medium focus:outline-none focus:ring-2 focus:ring-(--color-accent) cursor-pointer transition-colors hover:border-(--color-text) ${className}`}
       >
         {children}
       </select>
+      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-muted)">
+        <ChevronDown size={13} strokeWidth={2.5} />
+      </div>
     </div>
   );
 }
@@ -83,14 +106,27 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
 }
 
 // ── ConfirmDialog ─────────────────────────────────────────────────────────────
-export function ConfirmDialog({ message, onConfirm, onCancel }: { message: string; onConfirm: () => void; onCancel: () => void }) {
+export function ConfirmDialog({
+  message, detail, confirmLabel = "Confirm", variant = "danger",
+  onConfirm, onCancel,
+}: {
+  message: string;
+  detail?: string;
+  confirmLabel?: string;
+  variant?: "danger" | "primary";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-(--color-surface) border border-(--color-border) rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <p className="text-sm text-(--color-text) mb-6">{message}</p>
-        <div className="flex justify-end gap-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-(--color-surface) border border-(--color-border) rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="px-6 pt-6 pb-4">
+          <p className="font-semibold text-(--color-text) text-base mb-1">{message}</p>
+          {detail && <p className="text-sm text-(--color-muted) leading-relaxed">{detail}</p>}
+        </div>
+        <div className="flex gap-2 px-6 pb-6 justify-end">
           <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-          <Button variant="danger" onClick={onConfirm}>Confirm</Button>
+          <Button variant={variant} onClick={onConfirm}>{confirmLabel}</Button>
         </div>
       </div>
     </div>
@@ -195,6 +231,32 @@ export function Tabs({ tabs, active, onChange }: { tabs: string[]; active: strin
           {t}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── NavTabs — URL-based tabs using React Router ───────────────────────────────
+import { NavLink, useLocation } from "react-router-dom";
+export function NavTabs({ tabs }: { tabs: { label: string; to: string }[] }) {
+  const { pathname } = useLocation();
+  return (
+    <div className="flex gap-0.5 border-b border-(--color-border)">
+      {tabs.map(({ label, to }) => {
+        const active = pathname === to || pathname.startsWith(to + "/");
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              active
+                ? "border-(--color-accent) text-(--color-accent)"
+                : "border-transparent text-(--color-muted) hover:text-(--color-text)"
+            }`}
+          >
+            {label}
+          </NavLink>
+        );
+      })}
     </div>
   );
 }

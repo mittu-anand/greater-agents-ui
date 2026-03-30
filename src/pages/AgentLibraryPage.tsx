@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getAllAgents, getFarms, assignAgent, stopAgent, deployAgent, deleteAgent } from "../api/client";
-import { LoadingSkeleton, EmptyState, Badge, Button, Modal, Select, ConfirmDialog } from "../components/ui";
+import { LoadingSkeleton, EmptyState, Badge, Button, Modal, Select, ConfirmDialog, StyledSelect } from "../components/ui";
 import { useToastStore } from "../store/useToastStore";
 import { Bot, Plus, AlertCircle, Trash2 } from "lucide-react";
 import { timeAgo } from "../lib/time";
@@ -19,7 +19,7 @@ export default function AgentLibraryPage() {
   const [assignError, setAssignError] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const { data: agents, isLoading } = useQuery({ queryKey: ["agents-all"], queryFn: () => getAllAgents() });
+  const { data: agents, isLoading } = useQuery({ queryKey: ["agents-all"], queryFn: () => getAllAgents(), refetchInterval: 30_000 });
   const { data: farms } = useQuery({ queryKey: ["farms"], queryFn: getFarms });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["agents-all"] });
@@ -79,14 +79,14 @@ export default function AgentLibraryPage() {
         <Button onClick={() => navigate("/agents/new")}><Plus size={15} /> New Agent Config</Button>
       </div>
 
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <input className="bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) placeholder:text-(--color-muted) focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
+      <div className="flex gap-3 mb-6 flex-wrap items-center">
+        <input
+          className="flex-1 min-w-64 bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) placeholder:text-(--color-muted) focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
           placeholder="Search agents…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <select className="bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) focus:outline-none"
-          value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <StyledSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
           {["draft","stopped","running","error","pulling","pending","idle"].map((s) => <option key={s}>{s}</option>)}
-        </select>
+        </StyledSelect>
       </div>
 
       {isLoading ? <LoadingSkeleton /> : !filtered.length ? (
@@ -97,43 +97,50 @@ export default function AgentLibraryPage() {
           {filtered.map((agent) => {
             const farm = farmName(agent.farm_id);
             return (
-              <div key={agent.id} className="bg-(--color-surface) border border-(--color-border) rounded-xl p-4 hover:border-(--color-text) transition-colors flex flex-col gap-2">
-                <div className="flex items-start justify-between gap-2">
-                  <button className="text-left flex-1 min-w-0" onClick={() => navigate(`/agents/${agent.id}`)}>
-                    <p className="font-semibold text-sm text-(--color-text) leading-tight truncate">{agent.name}</p>
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0">
+              <div key={agent.id} className="bg-(--color-surface) border border-(--color-border) rounded-xl hover:border-(--color-accent) hover:shadow-sm transition-all flex flex-col">
+                {/* Card header */}
+                <button className="text-left p-4 flex-1" onClick={() => navigate(`/agents/${agent.id}`)}>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="w-9 h-9 bg-(--color-border) rounded-xl flex items-center justify-center shrink-0">
+                      <Bot size={16} className="text-(--color-text-sub)" />
+                    </div>
                     <Badge label={agent.status} />
-                    <button onClick={() => setDeleteId(agent.id)}
-                      className="p-1 rounded text-(--color-muted) hover:text-red-600 hover:bg-red-50 transition-colors" title="Delete">
-                      <Trash2 size={13} />
-                    </button>
                   </div>
-                </div>
-                <button className="text-left" onClick={() => navigate(`/agents/${agent.id}`)}>
-                  <div className="flex gap-1.5 flex-wrap mb-1">
+                  <p className="font-semibold text-sm text-(--color-text) leading-tight mb-1">{agent.name}</p>
+                  {agent.description && (
+                    <p className="text-xs text-(--color-muted) line-clamp-2 mb-2">{agent.description}</p>
+                  )}
+                  <div className="flex gap-1.5 flex-wrap mb-2">
                     <Badge label={agent.toolkit} />
                     {agent.model_name && <Badge label={agent.model_name} variant="idle" />}
                   </div>
-                  {farm
-                    ? <span className="inline-flex items-center text-xs bg-(--color-border) text-(--color-text-sub) px-2 py-0.5 rounded-full">{farm}</span>
-                    : <span className="inline-flex items-center text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Unassigned</span>
-                  }
-                  <p className="text-xs text-(--color-muted) mt-1">{agent.tool_count} tools · {timeAgo(agent.last_run)}</p>
+                  <div className="flex items-center justify-between">
+                    {farm
+                      ? <span className="text-xs bg-(--color-border) text-(--color-text-sub) px-2 py-0.5 rounded-full truncate max-w-28">{farm}</span>
+                      : <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Unassigned</span>
+                    }
+                    <span className="text-xs text-(--color-muted)">{agent.tool_count} tools</span>
+                  </div>
                 </button>
-                <div className="flex gap-1 pt-1 border-t border-(--color-border)">
+
+                {/* Card footer */}
+                <div className="flex items-center gap-1 px-4 pb-4 pt-2 border-t border-(--color-border) mt-auto">
                   {agent.status === "draft" && (
-                    <Button size="sm" variant="outline" className="flex-1 justify-center text-xs"
+                    <Button size="sm" variant="outline" className="flex-1 justify-center"
                       onClick={() => { setAssignTarget(agent); setAssignError(""); }}>Assign to Farm</Button>
                   )}
                   {agent.status === "stopped" && (
-                    <Button size="sm" variant="outline" className="flex-1 justify-center text-xs"
+                    <Button size="sm" variant="outline" className="flex-1 justify-center"
                       onClick={() => deployMut.mutate(agent.id)}>Deploy</Button>
                   )}
                   {agent.status === "running" && (
-                    <Button size="sm" variant="outline" className="flex-1 justify-center text-xs"
+                    <Button size="sm" variant="outline" className="flex-1 justify-center"
                       onClick={() => stopMut.mutate(agent.id)}>Stop</Button>
                   )}
+                  <button onClick={() => setDeleteId(agent.id)}
+                    className="p-1.5 rounded-lg text-(--color-muted) hover:text-red-600 hover:bg-red-50 transition-colors ml-auto" title="Delete">
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
             );
@@ -163,7 +170,7 @@ export default function AgentLibraryPage() {
       {deleteId && (
         <ConfirmDialog
           message={`Delete agent "${deleteTarget?.name}"? This cannot be undone.`}
-          onConfirm={() => deleteMut.mutate(deleteId)}
+          onConfirm={() => { const id = deleteId!; setDeleteId(null); deleteMut.mutate(id); }}
           onCancel={() => setDeleteId(null)}
         />
       )}

@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getFarms, createFarm, getAgents } from "../api/client";
 import { LoadingSkeleton, EmptyState, Modal, Button, Input, Textarea } from "../components/ui";
-import { Plus, Tractor, AlertCircle } from "lucide-react";
+import { Plus, Tractor, AlertCircle, Server, Container, Cloud, Hammer, Download, ChevronRight } from "lucide-react";
 import type { TargetType, Farm } from "../types";
 
 const TARGET_TYPES: TargetType[] = ["dedicated_servers", "kubernetes", "cloud"];
@@ -110,20 +110,26 @@ export default function FarmsPage() {
             />
             <div>
               <label className="text-xs font-medium text-(--color-text-sub) block mb-2">Target Type</label>
-              <div className="flex flex-col gap-2">
-                {TARGET_TYPES.map((t) => (
-                  <label key={t} className="flex items-center gap-2 text-sm cursor-pointer text-(--color-text)">
-                    <input
-                      type="radio"
-                      name="target_type"
-                      value={t}
-                      checked={form.target_type === t}
-                      onChange={() => setForm((f) => ({ ...f, target_type: t }))}
-                      className="accent-(--color-accent)"
-                    />
-                    {t}
-                  </label>
-                ))}
+              <div className="grid grid-cols-3 gap-2">
+                {TARGET_TYPES.map((t) => {
+                  const Icon = t === "kubernetes" ? Container : t === "cloud" ? Cloud : Server;
+                  const labels: Record<string, string> = { dedicated_servers: "Servers", kubernetes: "Kubernetes", cloud: "Cloud" };
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, target_type: t }))}
+                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-xl border text-sm font-medium transition-colors ${
+                        form.target_type === t
+                          ? "border-(--color-accent) bg-(--color-accent)/10 text-(--color-accent)"
+                          : "border-(--color-border) text-(--color-text) hover:border-(--color-text)"
+                      }`}
+                    >
+                      <Icon size={18} />
+                      <span className="text-xs">{labels[t]}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             {mutation.error && (
@@ -148,24 +154,87 @@ function FarmCard({ farm, onClick }: { farm: Farm; onClick: () => void }) {
     queryFn: () => getAgents(farm.id),
     retry: 1,
   });
+  const total   = agents?.length ?? 0;
   const running = agents?.filter((a) => a.status === "running").length ?? 0;
   const errors  = agents?.filter((a) => a.status === "error").length ?? 0;
+  const stopped = agents?.filter((a) => a.status === "stopped").length ?? 0;
+  const healthPct = total > 0 ? Math.round((running / total) * 100) : 0;
+
+  const TypeIcon = farm.target_type === "kubernetes" ? Container
+                 : farm.target_type === "cloud"       ? Cloud
+                 : Server;
+
+  const typeLabel = farm.target_type === "kubernetes" ? "Kubernetes"
+                  : farm.target_type === "cloud"       ? "Cloud"
+                  : "Dedicated Servers";
+
+  const DeployIcon = farm.deploy_strategy === "pull" ? Download : Hammer;
+  const deployLabel = farm.deploy_strategy === "pull"
+    ? "Pull image"   // pulls a pre-built Docker image from a registry
+    : "Build on server"; // clones repo and builds Docker image on the server
+
   return (
     <button
       onClick={onClick}
-      className="bg-(--color-surface) border border-(--color-border) rounded-xl p-5 text-left hover:border-(--color-text) transition-colors flex flex-col gap-3"
+      className="group bg-(--color-surface) border border-(--color-border) rounded-2xl p-5 text-left hover:border-(--color-accent) hover:shadow-sm transition-all flex flex-col gap-4"
     >
-      <div>
-        <p className="font-semibold text-(--color-text)">{farm.name}</p>
-        {farm.description && (
-          <p className="text-xs text-(--color-muted) mt-0.5 line-clamp-2">{farm.description}</p>
-        )}
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-(--color-text) truncate">{farm.name}</p>
+          {farm.description && (
+            <p className="text-xs text-(--color-muted) mt-0.5 line-clamp-1">{farm.description}</p>
+          )}
+        </div>
+        {/* Target type badge */}
+        <span className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg bg-(--color-bg) border border-(--color-border) text-(--color-text-sub)">
+          <TypeIcon size={11} />
+          {typeLabel}
+        </span>
       </div>
-      <p className="text-xs text-(--color-muted)">{farm.target_type}</p>
-      <div className="flex gap-3 text-xs text-(--color-muted)">
-        <span>{agents?.length ?? 0} agents</span>
-        <span>{running} running</span>
-        {errors > 0 && <span className="text-red-500">{errors} errors</span>}
+
+      {/* Agent stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-col items-center bg-(--color-bg) rounded-xl py-2.5">
+          <span className="text-lg font-bold text-(--color-text) leading-none">{total}</span>
+          <span className="text-[10px] text-(--color-muted) mt-0.5">agents</span>
+        </div>
+        <div className="flex flex-col items-center bg-(--color-bg) rounded-xl py-2.5">
+          <span className={`text-lg font-bold leading-none ${running > 0 ? "text-(--color-accent)" : "text-(--color-muted)"}`}>{running}</span>
+          <span className="text-[10px] text-(--color-muted) mt-0.5">running</span>
+        </div>
+        <div className="flex flex-col items-center bg-(--color-bg) rounded-xl py-2.5">
+          <span className={`text-lg font-bold leading-none ${errors > 0 ? "text-red-500" : "text-(--color-muted)"}`}>{errors}</span>
+          <span className="text-[10px] text-(--color-muted) mt-0.5">errors</span>
+        </div>
+      </div>
+
+      {/* Health bar */}
+      {total > 0 && (
+        <div>
+          <div className="flex justify-between text-[10px] text-(--color-muted) mb-1.5">
+            <span>Health</span>
+            <span>{healthPct}%</span>
+          </div>
+          <div className="h-1.5 bg-(--color-border) rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${healthPct}%`,
+                backgroundColor: errors > 0 ? "#ef4444" : "var(--color-accent)",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between pt-1 border-t border-(--color-border)">
+        <span className="flex items-center gap-1.5 text-xs text-(--color-muted)" title={deployLabel}>
+          <DeployIcon size={11} />
+          {farm.deploy_strategy === "pull" ? "Pull image" : "Build on server"}
+        </span>
+        <ChevronRight size={14} className="text-(--color-muted) opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
     </button>
   );

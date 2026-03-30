@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Bot, Cpu, Server, FileCode, Sparkles, Tractor, Wrench, Key, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Bot, Cpu, Server, FileCode, Sparkles, Tractor, Wrench, Key, ChevronRight, Settings } from "lucide-react";
 import { useSidebarStore } from "../store/useSidebarStore";
+import LogoMark from "./LogoMark";
 
 const LIBRARY = [
   { to: "/agents",       label: "Agents",       icon: Bot },
@@ -17,6 +18,7 @@ const FARMS = [
 const TOOLING = [
   { to: "/tools",        label: "Tool Registry",icon: Wrench },
   { to: "/credentials",  label: "Credentials",  icon: Key },
+  { to: "/settings",     label: "Settings",     icon: Settings },
 ];
 
 function NavGroup({ label, links, expanded }: { label: string; links: typeof LIBRARY; expanded: boolean }) {
@@ -41,16 +43,19 @@ export default function Sidebar() {
   return (
     <aside className={`relative flex flex-col shrink-0 h-screen sticky top-0 bg-(--color-sidebar) border-r border-(--color-border) transition-all duration-200 ease-in-out ${expanded ? "w-52" : "w-14"}`}>
       {/* Logo */}
-      <div className="flex items-center justify-center h-14 px-2 border-b border-(--color-border) overflow-hidden">
-        <NavLink to="/" title="Dashboard">
-          <img src="/logo.svg" alt="Greater Agents" className={`object-contain shrink-0 transition-all duration-200 ${expanded ? "h-9 w-36" : "h-8 w-auto"}`} />
+      <div className="flex items-center h-14 px-3 border-b border-(--color-border) overflow-hidden">
+        <NavLink to="/dashboard" title="Dashboard" className="flex items-center gap-2 min-w-0">
+          {expanded
+            ? <LogoMark imgClass="h-7 w-auto shrink-0" textClass="text-xl" />
+            : <img src="/logo.svg" alt="Greater Agents" className="h-8 w-auto shrink-0" />
+          }
         </NavLink>
       </div>
 
       {/* Nav */}
       <nav className="flex flex-col flex-1 p-2 pt-3 overflow-y-auto">
         {/* Dashboard */}
-        <NavLink to="/" end title={!expanded ? "Dashboard" : undefined}
+        <NavLink to="/dashboard" end title={!expanded ? "Dashboard" : undefined}
           className={({ isActive }) =>
             `flex items-center rounded-lg transition-colors mb-2 ${expanded ? "gap-3 px-3 py-2" : "justify-center p-2.5"}
              ${isActive ? "bg-(--color-accent) text-white" : "text-(--color-text-sub) hover:bg-(--color-sidebar-hover) hover:text-(--color-text)"}`}>
