@@ -46,6 +46,7 @@ export const unassignAgent  = (id: string)             => req<Agent>(`/api/agent
 export const getAgentRuns   = (id: string)             => req<AgentRun[]>(`/api/agents/${id}/runs`);
 export const getAgentLogs   = (id: string, n = 500)    => req<LogLine[]>(`/api/agents/${id}/logs?limit=${n}`);
 export const getAgentDockerLogs = (id: string, n = 200) => req<{ logs: Array<{ts: string; level: string; message: string}>; container: string; error?: string }>(`/api/agents/${id}/docker-logs?lines=${n}`);
+export const updateAgent    = (id: string, d: unknown)  => req<Agent>(`/api/agents/${id}`, { method: "PATCH", body: JSON.stringify(d) });
 export const getAgentSkills = (id: string)             => req<AgentSkill[]>(`/api/agents/${id}/skills`);
 export const applySkill     = (agentId: string, skillId: string, d?: unknown) => req<Agent>(`/api/agents/${agentId}/skills/${skillId}`, { method: "POST", body: JSON.stringify(d ?? {}) });
 export const removeSkill    = (agentId: string, skillId: string) => req<Agent>(`/api/agents/${agentId}/skills/${skillId}`, { method: "DELETE" });

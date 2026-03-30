@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useToastStore } from "../store/useToastStore";
 import { useParams, useNavigate, Link, Routes, Route, Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAgent, stopAgent, restartAgent, deleteAgent, getAgentRuns, getAgentLogs, getAgentDockerLogs } from "../api/client";
+import { getAgent, stopAgent, restartAgent, deleteAgent, getAgentRuns, getAgentLogs, getAgentDockerLogs, updateAgent } from "../api/client";
 import { LoadingSkeleton, ErrorCard, NavTabs, Badge, Button, ConfirmDialog, StyledSelect } from "../components/ui";
 import { useLogStore } from "../store/useLogStore";
 import { timeAgo, formatUptime } from "../lib/time";
-import { StopCircle, RefreshCw, Trash2, AlertCircle, Send, Loader2, Server, Cpu, Clock, Wrench } from "lucide-react";
+import { StopCircle, RefreshCw, Trash2, AlertCircle, Send, Loader2, Server, Cpu, Clock, Wrench, Pencil, Save, X, RotateCcw } from "lucide-react";
 
 const MASK_KEYS = /key|token|secret|password/i;
 
@@ -366,27 +366,112 @@ function RunsTab({ agentId }: { agentId: string }) {
 }
 
 function ConfigTab({ agent }: { agent: import("../types").Agent }) {
+  const qc = useQueryClient();
+  const toast = useToastStore((s) => s.push);
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState({
+    name: agent.name,
+    description: agent.description,
+    system_prompt: agent.system_prompt,
+    temperature: agent.temperature,
+    purpose_tag: agent.purpose_tag,
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (d: typeof form) => updateAgent(agent.id, d),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent", agent.id] });
+      setEditing(false);
+      setSaved(true);
+      toast("Agent config saved — redeploy to apply changes");
+      setTimeout(() => setSaved(false), 5000);
+    },
+    onError: (e) => toast((e as Error).message, "error"),
+  });
+
   const maskConfig = (cfg: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, MASK_KEYS.test(k) ? "***" : v]));
+
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
-      <Section title="Identity">
-        <Row label="Name">{agent.name}</Row>
-        <Row label="Purpose">{agent.purpose_tag}</Row>
-      </Section>
-      <Section title="LLM">
-        <Row label="Provider">{agent.provider}</Row>
-        <Row label="Model">{agent.model_name}</Row>
-        <Row label="Temperature">{agent.temperature}</Row>
-      </Section>
-      <Section title="System Prompt">
-        <pre className="text-xs font-mono text-(--color-text) whitespace-pre-wrap bg-(--color-bg) p-3 rounded-lg border border-(--color-border) leading-relaxed">{agent.system_prompt || "—"}</pre>
-      </Section>
+      {/* Redeploy notice */}
+      {saved && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm">
+          <RotateCcw size={15} className="text-amber-500 shrink-0" />
+          <span className="text-amber-700">Config saved. Redeploy the agent from the Farm page to apply changes.</span>
+        </div>
+      )}
+
+      {/* Identity */}
+      <div className="bg-(--color-surface) border border-(--color-border) rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-semibold text-(--color-muted) uppercase tracking-wider">Identity</p>
+          {!editing ? (
+            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+              <Pencil size={12} /> Edit
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ name: agent.name, description: agent.description, system_prompt: agent.system_prompt, temperature: agent.temperature, purpose_tag: agent.purpose_tag }); }}>
+                <X size={12} /> Cancel
+              </Button>
+              <Button size="sm" onClick={() => updateMut.mutate(form)} disabled={updateMut.isPending}>
+                <Save size={12} /> {updateMut.isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {editing ? (
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className="text-xs font-medium text-(--color-text-sub) block mb-1">Name</label>
+              <input className="w-full bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
+                value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-(--color-text-sub) block mb-1">Description</label>
+              <input className="w-full bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent)"
+                value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-(--color-text-sub) block mb-1">System Prompt</label>
+              <textarea rows={8}
+                className="w-full bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-sm text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent) resize-none font-mono"
+                value={form.system_prompt} onChange={e => setForm(f => ({ ...f, system_prompt: e.target.value }))} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-(--color-text-sub) block mb-1">Temperature: {form.temperature}</label>
+              <input type="range" min={0} max={1} step={0.1} value={form.temperature}
+                onChange={e => setForm(f => ({ ...f, temperature: parseFloat(e.target.value) }))}
+                className="w-full accent-(--color-accent)" />
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Row label="Name">{agent.name}</Row>
+            <Row label="Purpose">{agent.purpose_tag}</Row>
+            <Row label="Provider">{agent.provider}</Row>
+            <Row label="Model">{agent.model_name}</Row>
+            <Row label="Temperature">{agent.temperature}</Row>
+          </div>
+        )}
+      </div>
+
+      {/* System Prompt (read-only when not editing) */}
+      {!editing && (
+        <Section title="System Prompt">
+          <pre className="text-xs font-mono text-(--color-text) whitespace-pre-wrap bg-(--color-bg) p-3 rounded-lg border border-(--color-border) leading-relaxed">{agent.system_prompt || "—"}</pre>
+        </Section>
+      )}
+
+      {/* Tools */}
       {agent.tools.length > 0 && (
         <Section title="Tools">
           {agent.tools.map((t) => (
             <div key={t.id} className="mb-3">
-              <div className="flex items-center gap-2 mb-1"><Badge label={t.tool_type} /><span className="text-sm font-medium text-(--color-text)">{t.display_name}</span></div>
+              <div className="flex items-center gap-2 mb-1"><Badge label={t.tool_type} /><span className="text-sm font-medium text-(--color-text)">{t.display_name || t.name}</span></div>
               <pre className="text-xs font-mono text-(--color-text) whitespace-pre-wrap bg-(--color-bg) p-2 rounded border border-(--color-border)">{JSON.stringify(maskConfig(t.config), null, 2)}</pre>
             </div>
           ))}
@@ -406,6 +491,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 interface ChatMessage { role: "user" | "assistant"; content: string; type?: string; }
+
+function _friendlyError(raw: string): string {
+  if (raw.includes("tool_use_failed") || raw.includes("failed_generation"))
+    return "The model had trouble formatting a tool call. This is a known issue with some Groq models — try rephrasing your request or switching to mixtral-8x7b-32768.";
+  if (raw.includes("rate_limit") || raw.includes("429"))
+    return "Rate limit reached. Please wait a moment and try again.";
+  if (raw.includes("quota") || raw.includes("exhausted"))
+    return "Daily quota exhausted. Switch to a different model or API key.";
+  if (raw.includes("system_prompt is required"))
+    return "Agent has no system prompt configured. Edit the Config tab to add one.";
+  // Strip long technical prefixes like "litellm.BadRequestError: GroqException - {...}"
+  const jsonMatch = raw.match(/"message":"([^"]+)"/);
+  if (jsonMatch) return jsonMatch[1];
+  return raw.length > 200 ? raw.slice(0, 200) + "…" : raw;
+}
 
 function ChatTab({ agent }: { agent: import("../types").Agent }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -458,13 +558,13 @@ function ChatTab({ agent }: { agent: import("../types").Agent }) {
             } else if (ev.type === "tool_call") {
               setMessages(prev => prev.map((m, i) => i === assistantIdx ? { ...m, content: assistantContent + `\n\n🔧 ${ev.tool}` } : m));
             } else if (ev.type === "error") {
-              setMessages(prev => prev.map((m, i) => i === assistantIdx ? { ...m, content: ev.content, type: "error" } : m));
+              setMessages(prev => prev.map((m, i) => i === assistantIdx ? { ...m, content: _friendlyError(ev.content), type: "error" } : m));
             }
           } catch { /* skip */ }
         }
       }
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: (e as Error).message, type: "error" }]);
+      setMessages(prev => [...prev, { role: "assistant", content: _friendlyError((e as Error).message), type: "error" }]);
     } finally {
       setStreaming(false);
     }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import LogoMark from "../components/LogoMark";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3001";
 
@@ -69,7 +70,9 @@ export default function SignupPage() {
     <div className="min-h-screen bg-(--color-bg) flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link to="/"><img src="/logo.svg" alt="Greater Agents" className="h-10 w-auto mx-auto mb-6" /></Link>
+          <Link to="/" className="inline-flex justify-center mb-6">
+            <LogoMark imgClass="h-10 w-auto" textClass="text-3xl" />
+          </Link>
           <h1 className="text-2xl font-bold text-(--color-text)">Create your account</h1>
           <p className="text-sm text-(--color-muted) mt-1">Start building your agent farm</p>
         </div>

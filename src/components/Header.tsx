@@ -12,6 +12,7 @@ const titles: Record<string, string> = {
   "/skills":        "Agent Skills",
   "/farms":         "Farms",
   "/tools":         "Tool Registry",
+  "/settings":      "Settings",
 };
 
 export default function Header() {

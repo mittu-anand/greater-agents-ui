@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import LogoMark from "../components/LogoMark";
 
 const BACKEND = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3001";
 
@@ -51,7 +52,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/"><img src="/logo.svg" alt="Greater Agents" className="h-10 w-auto mx-auto mb-6" /></Link>
+          <Link to="/" className="inline-flex justify-center mb-6">
+            <LogoMark imgClass="h-10 w-auto" textClass="text-3xl" />
+          </Link>
           <h1 className="text-2xl font-bold text-(--color-text)">Welcome back</h1>
           <p className="text-sm text-(--color-muted) mt-1">Sign in to your account</p>
         </div>

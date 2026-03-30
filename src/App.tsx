@@ -21,6 +21,7 @@ import FarmsPage         from "./pages/FarmsPage";
 import FarmDetailPage    from "./pages/FarmDetailPage";
 import ToolRegistryPage  from "./pages/ToolRegistryPage";
 import NotFound          from "./pages/NotFound";
+import SettingsPage      from "./pages/SettingsPage";
 import Toaster           from "./components/Toaster";
 
 const qc = new QueryClient({
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/farms"           element={<AppShell><FarmsPage /></AppShell>} />
             <Route path="/farms/:farmId"   element={<AppShell><FarmDetailPage /></AppShell>} />
             <Route path="/tools"           element={<AppShell><ToolRegistryPage /></AppShell>} />
+            <Route path="/settings"        element={<AppShell><SettingsPage /></AppShell>} />
             <Route path="*"                element={<NotFound />} />
           </Routes>
           <Toaster />

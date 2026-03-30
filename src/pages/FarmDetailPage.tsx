@@ -582,7 +582,8 @@ function SettingsTab({ farm, onDeleted }: { farm: import("../types").Farm; onDel
     deploy_strategy: farm.deploy_strategy ?? "build",
     docker_image: farm.docker_image ?? "",
     registry_user: farm.registry_user ?? "",
-    registry_token: "",  // never pre-fill token
+    registry_token: "",
+    kubeconfig: "",  // never pre-fill sensitive data
   });
   const [confirm, setConfirm] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -625,24 +626,48 @@ function SettingsTab({ farm, onDeleted }: { farm: import("../types").Farm; onDel
               label="Docker Image URL"
               value={form.docker_image}
               onChange={(e) => setForm((f) => ({ ...f, docker_image: e.target.value }))}
-              placeholder="ghcr.io/your-org/agent-service:latest"
+              placeholder="rockingcoder/greater-agents:latest"
             />
             <Input
               label="Registry Username"
               value={form.registry_user}
               onChange={(e) => setForm((f) => ({ ...f, registry_user: e.target.value }))}
-              placeholder="your-username"
+              placeholder="your-username (leave blank for public images)"
             />
             <Input
               label="Registry Token / Password"
               type="password"
               value={form.registry_token}
               onChange={(e) => setForm((f) => ({ ...f, registry_token: e.target.value }))}
-              placeholder="Leave blank to keep existing"
+              placeholder="Leave blank for public images or to keep existing"
             />
-            <p className="text-xs text-(--color-muted)">
-              For GitHub Container Registry: use a Personal Access Token with <code className="bg-(--color-border) px-1 rounded">read:packages</code> scope.
-            </p>
+          </div>
+        )}
+
+        {/* Kubernetes config */}
+        {farm.target_type === "kubernetes" && (
+          <div className="flex flex-col gap-3 p-4 bg-(--color-bg) border border-(--color-border) rounded-xl">
+            <p className="text-xs font-semibold text-(--color-text-sub) uppercase tracking-wider">Kubernetes Config</p>
+            <Input
+              label="Docker Image (required for K8s)"
+              value={form.docker_image}
+              onChange={(e) => setForm((f) => ({ ...f, docker_image: e.target.value }))}
+              placeholder="rockingcoder/greater-agents:latest"
+            />
+            <div>
+              <label className="text-xs font-medium text-(--color-text-sub) block mb-1.5">Kubeconfig (YAML)</label>
+              <textarea
+                rows={8}
+                className="w-full bg-(--color-bg) border border-(--color-border) rounded-lg px-3 py-2 text-xs font-mono text-(--color-text) focus:outline-none focus:ring-1 focus:ring-(--color-accent) resize-none"
+                placeholder={"apiVersion: v1\nclusters:\n- cluster:\n    server: https://...\n  name: lke-cluster\n..."}
+                value={form.kubeconfig}
+                onChange={(e) => setForm((f) => ({ ...f, kubeconfig: e.target.value }))}
+              />
+              <p className="text-xs text-(--color-muted) mt-1">
+                Download from Linode Cloud Manager → Kubernetes → your cluster → Download kubeconfig.
+                Leave blank to keep existing.
+              </p>
+            </div>
           </div>
         )}
 

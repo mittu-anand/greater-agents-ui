@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Zap, Eye, Repeat2, Server, BarChart2, Sparkles, Shield, Bot, GitBranch, Database, Layers, Clock, Lock, RefreshCw, Search, Brain, Link2 } from "lucide-react";
+import LogoMark from "../components/LogoMark";
+import HeroImage from "../components/HeroImage";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -14,7 +16,7 @@ function Nav() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 bg-[#e3d6bc]/90 backdrop-blur border-b border-[#cfc4aa]">
       <div className="flex items-center gap-2">
-        <img src="/logo.svg" alt="Greater Agents" className="h-8 w-auto" />
+        <LogoMark imgClass="h-7 w-auto" textClass="text-xl" />
       </div>
       <div className="hidden md:flex items-center gap-8 text-sm text-[#555555]">
         <a href="#platform" className="hover:text-[#111] transition-colors">Platform</a>
@@ -35,29 +37,33 @@ function Nav() {
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function Hero() {
   return (
-    <section className="pt-32 pb-24 px-8 text-center max-w-5xl mx-auto">
-      <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#4e8565] bg-[#4e8565]/10 border border-[#4e8565]/20 px-3 py-1.5 rounded-full mb-8">
-        <Zap size={11} /> Open Enterprise Platform for AI Agents
+    <section className="pt-32 pb-24 px-8">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+        {/* Left — text */}
+        <div>
+          <h1 className="text-5xl md:text-6xl font-bold text-[#111] leading-tight mb-6">
+            Create, Deploy, Orchestrate and Scale<br />
+            <span className="text-[#4e8565]">AI Agents</span> — Without the Complexity
+          </h1>
+          <p className="text-lg text-[#555555] mb-10 leading-relaxed">
+            Greater Agents is an open enterprise platform for creating, deploying and managing intelligent AI agents across any infrastructure. Build once, run anywhere, scale to any team.
+          </p>
+          <div className="flex items-center gap-4 flex-wrap mb-10">
+            <Link to="/signup" className="flex items-center gap-2 bg-[#4e8565] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#3d6b52] transition-colors">
+              Start Building <ArrowRight size={16} />
+            </Link>
+            <a href="https://github.com/mittu-anand/greater-agents-agent-service" target="_blank" rel="noopener"
+              className="flex items-center gap-2 border border-[#cfc4aa] text-[#111] px-6 py-3 rounded-xl font-semibold hover:border-[#111] transition-colors bg-[#ede3ce]">
+              <GithubIcon size={16} /> View on GitHub
+            </a>
+          </div>
+        </div>
+
+        {/* Right — illustration */}
+        <div className="flex items-center justify-center lg:justify-end">
+          <HeroImage className="w-full max-w-xl lg:max-w-2xl xl:max-w-3xl object-contain" />
+        </div>
       </div>
-      <h1 className="text-5xl md:text-6xl font-bold text-[#111] leading-tight mb-6">
-        Deploy, Orchestrate and Scale<br />
-        <span className="text-[#4e8565]">AI Agents</span> — Without the Complexity
-      </h1>
-      <p className="text-lg text-[#555555] max-w-2xl mx-auto mb-10 leading-relaxed">
-        Greater Agents is an open enterprise platform for creating, deploying and managing intelligent AI agents across any infrastructure. Build once, run anywhere, scale to any team.
-      </p>
-      <div className="flex items-center justify-center gap-4 flex-wrap mb-10">
-        <Link to="/signup" className="flex items-center gap-2 bg-[#4e8565] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#3d6b52] transition-colors">
-          Start Building <ArrowRight size={16} />
-        </Link>
-        <a href="https://github.com/mittu-anand/greater-agents-agent-service" target="_blank" rel="noopener"
-          className="flex items-center gap-2 border border-[#cfc4aa] text-[#111] px-6 py-3 rounded-xl font-semibold hover:border-[#111] transition-colors bg-[#ede3ce]">
-          <GithubIcon size={16} /> View on GitHub
-        </a>
-      </div>
-      <p className="text-xs text-[#9e8e78] tracking-wide">
-        Built on Google ADK · LiteLLM · MCP · A2A Protocol
-      </p>
     </section>
   );
 }
@@ -377,7 +383,7 @@ function Footer() {
     <footer className="border-t border-[#cfc4aa] py-12 px-8">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <img src="/logo.svg" alt="Greater Agents" className="h-7 w-auto mb-2" />
+          <LogoMark imgClass="h-7 w-auto mb-2" textClass="text-xl" />
           <p className="text-xs text-[#9e8e78]">The open enterprise platform for AI agent orchestration.</p>
         </div>
         <div className="flex items-center gap-6 text-sm text-[#555555]">
