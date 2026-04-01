@@ -13,6 +13,8 @@ export interface WizardData {
   description: string;
   purpose_tag: string;
   toolkit: Toolkit | "";
+  framework: string;
+  config: Record<string, any>;
   llm_id: string;
   temperature: number;
   system_prompt: string;
@@ -38,7 +40,7 @@ interface WizardStore {
 
 const empty: WizardData = {
   farm_id: "", name: "", description: "", purpose_tag: "",
-  toolkit: "", llm_id: "", temperature: 0.7,
+  toolkit: "", framework: "adk", config: {}, llm_id: "", temperature: 0.7,
   system_prompt: "", nim_enabled: false, nim_base_url: "",
   tools: [], trigger_type: "", trigger_config: {},
   environment_id: "", placement: "least_loaded",

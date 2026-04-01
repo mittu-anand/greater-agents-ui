@@ -1,33 +1,59 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getLLMs } from "../../api/client";
 import { useWizardStore } from "../../store/useWizardStore";
 import type { Toolkit } from "../../types";
 
-const TOOLKITS: { name: Toolkit; desc: string }[] = [
-  { name: "LangGraph",  desc: "Stateful multi-agent graphs" },
-  { name: "CrewAI",     desc: "Role-based agent crews" },
-  { name: "AutoGen",    desc: "Conversational agent framework" },
-  { name: "Google ADK", desc: "Google Agent Development Kit" },
-  { name: "Custom",     desc: "Bring your own framework" },
+const TOOLKITS: { name: Toolkit; framework: string; desc: string }[] = [
+  { name: "Google ADK", framework: "adk",       desc: "Google Agent Development Kit (Native)" },
+  { name: "LangGraph",  framework: "langgraph", desc: "Stateful multi-agent graphs" },
+  { name: "CrewAI",     framework: "crewai",    desc: "Role-based agent crews" },
+  { name: "LangChain",  framework: "langchain", desc: "Standard chains and agents" },
+  { name: "AutoGen",    framework: "autogen",   desc: "Conversational agent framework" },
+  { name: "Custom",     framework: "custom",    desc: "Bring your own framework" },
 ];
 
 export default function Step2Toolkit({ farmId: _ }: { farmId: string }) {
   const { data, update } = useWizardStore();
-  // Global LLMs — not per-farm
   const { data: llms } = useQuery({ queryKey: ["llms"], queryFn: () => getLLMs() });
+  const [configStr, setConfigStr] = useState(JSON.stringify(data.config, null, 2));
+  const [jsonError, setJsonError] = useState("");
+
+  const handleFrameworkChange = (name: Toolkit, framework: string) => {
+    update({ toolkit: name, framework });
+  };
+
+  const handleConfigChange = (val: string) => {
+    setConfigStr(val);
+    try {
+      const parsed = JSON.parse(val);
+      update({ config: parsed });
+      setJsonError("");
+    } catch (e) {
+      setJsonError((e as Error).message);
+    }
+  };
+
+  // Sync configStr if data.config changes externally
+  useEffect(() => {
+    const current = JSON.stringify(data.config, null, 2);
+    if (current !== configStr && !jsonError) {
+      setConfigStr(current);
+    }
+  }, [data.config]);
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold text-(--color-text) mb-1">Toolkit & LLM</h2>
-        <p className="text-sm text-(--color-muted)">Choose the agent framework and language model.</p>
+        <h2 className="text-xl font-semibold text-(--color-text) mb-1">Framework & LLM</h2>
+        <p className="text-sm text-(--color-muted)">Choose the orchestration framework and language model.</p>
       </div>
 
       <div>
-        <label className="text-xs font-medium text-(--color-text-sub) block mb-3">Toolkit *</label>
+        <label className="text-xs font-medium text-(--color-text-sub) block mb-3">Framework *</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {TOOLKITS.map(({ name, desc }) => (
-            <button key={name} onClick={() => update({ toolkit: name })}
+          {TOOLKITS.map(({ name, framework, desc }) => (
+            <button key={name} onClick={() => handleFrameworkChange(name, framework)}
               className={`px-4 py-3 rounded-xl border text-left transition-colors
                 ${data.toolkit === name ? "border-(--color-accent) bg-(--color-accent) text-white" : "border-(--color-border) bg-(--color-surface) hover:border-(--color-text)"}`}>
               <p className={`text-sm font-semibold ${data.toolkit === name ? "text-white" : "text-(--color-text)"}`}>{name}</p>
@@ -36,6 +62,24 @@ export default function Step2Toolkit({ farmId: _ }: { farmId: string }) {
           ))}
         </div>
       </div>
+
+      {data.framework !== "adk" && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          <label className="text-xs font-medium text-(--color-text-sub) block mb-2">
+            Framework Configuration (JSON)
+          </label>
+          <textarea
+            value={configStr}
+            onChange={(e) => handleConfigChange(e.target.value)}
+            className={`w-full bg-(--color-bg) border ${jsonError ? "border-red-500" : "border-(--color-border)"} rounded-lg px-3 py-2 text-xs font-mono text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent) h-32 resize-none`}
+            placeholder='{ "key": "value" }'
+          />
+          {jsonError && <p className="text-[10px] text-red-500 mt-1">Invalid JSON: {jsonError}</p>}
+          <p className="text-[10px] text-(--color-muted) mt-1">
+            Override framework-specific settings (e.g. roles, state, Graph IDs).
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="text-xs font-medium text-(--color-text-sub) block mb-2">LLM *</label>

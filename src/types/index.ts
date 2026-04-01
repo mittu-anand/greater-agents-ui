@@ -4,7 +4,7 @@ export type ConnType     = "ssh" | "docker_api";
 export type ToolType     = "mcp" | "openapi" | "function";
 export type TriggerType  = "webhook" | "schedule" | "event" | "manual";
 export type CredType     = "oauth" | "static" | "ssh_key";
-export type Toolkit      = "LangGraph" | "CrewAI" | "AutoGen" | "Google ADK" | "Custom";
+export type Toolkit      = "LangGraph" | "CrewAI" | "AutoGen" | "Google ADK" | "LangChain" | "Custom";
 
 export interface Farm {
   id: string;
@@ -25,6 +25,8 @@ export interface Agent {
   description: string;
   status: AgentStatus;
   toolkit: Toolkit;
+  framework: string;
+  config: Record<string, any>;
   model_id: string;
   model_name: string;
   provider: string;

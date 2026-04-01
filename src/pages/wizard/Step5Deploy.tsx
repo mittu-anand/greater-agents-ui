@@ -27,12 +27,13 @@ export default function Step5Save({ onSuccess }: { onSuccess: () => void }) {
 
   const rows: [string, string][] = [
     ["Name",        data.name],
-    ["Purpose",     data.purpose_tag || "—"],
+    ["Framework",   data.framework.toUpperCase()],
     ["Toolkit",     data.toolkit || "—"],
     ["LLM",         data.llm_id || "—"],
     ["Temperature", String(data.temperature)],
     ["Tools",       `${data.tools.length} selected`],
     ["Trigger",     data.trigger_type || "—"],
+    ["Config",      Object.keys(data.config).length > 0 ? "Custom JSON active" : "Default"],
   ];
 
   return (

@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
 import { ArrowRight, Zap, Eye, Repeat2, Server, BarChart2, Sparkles, Shield, Bot, GitBranch, Database, Layers, Clock, Lock, RefreshCw, Search, Brain, Link2 } from "lucide-react";
 import LogoMark from "../components/LogoMark";
-import HeroImage from "../components/HeroImage";
+import AgentLibrary from "../components/AgentLibrary";
+import AgentCows from "../components/AgentCows";
 
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -61,7 +63,8 @@ function Hero() {
 
         {/* Right — illustration */}
         <div className="flex items-center justify-center lg:justify-end">
-          <HeroImage className="w-full max-w-xl lg:max-w-2xl xl:max-w-3xl object-contain" />
+          <img src="/hero.svg" alt="AI Agent Orchestration"
+            className="w-full max-w-xl lg:max-w-2xl xl:max-w-3xl object-contain" />
         </div>
       </div>
     </section>
@@ -98,7 +101,97 @@ function Problem() {
   );
 }
 
-// ── Platform ──────────────────────────────────────────────────────────────────
+// ── Scroll-animated feature section ──────────────────────────────────────────
+function useScrollReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, visible };
+}
+
+function FeatureSection({
+  tag, headline, body, bullets, illustration, reverse = false,
+}: {
+  tag: string; headline: React.ReactNode; body: string; bullets: string[];
+  illustration: React.ReactNode; reverse?: boolean;
+}) {
+  const { ref, visible } = useScrollReveal();
+  return (
+    <div ref={ref} className={`flex flex-col lg:flex-row gap-10 lg:gap-16 items-center py-20 transition-all duration-700 ease-out
+      ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}
+      ${reverse ? "lg:flex-row-reverse" : ""}`}>
+      {/* Text — 50% */}
+      <div className={`w-full lg:w-1/2 shrink-0 flex flex-col items-start justify-center text-left transition-all duration-700 delay-100 ease-out
+        ${visible ? "opacity-100 translate-x-0" : reverse ? "opacity-0 translate-x-8" : "opacity-0 -translate-x-8"}`}>
+        {tag && (
+          <span className="inline-flex items-center gap-2 text-xs font-bold text-[#4e8565] bg-[#4e8565]/10 px-3 py-1.5 rounded-full mb-5 w-fit">
+            {tag}
+          </span>
+        )}
+        <h3 className={`font-bold leading-tight mb-5 ${!body && bullets.length === 0 ? "text-4xl md:text-5xl text-[#111]" : "text-2xl md:text-3xl text-[#111]"}`}>{headline}</h3>
+        {body && <p className="text-[#555] leading-relaxed mb-8 text-base">{body}</p>}
+        {bullets.length > 0 && (
+          <ul className="flex flex-col gap-3">
+            {bullets.map((b, i) => (
+              <li key={i} className={`flex items-start gap-3 text-sm text-[#444] transition-all duration-500 ease-out
+                ${visible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4"}`}
+                style={{ transitionDelay: `${200 + i * 80}ms` }}>
+                <span className="w-5 h-5 rounded-full bg-[#4e8565]/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4e8565]" />
+                </span>
+                {b}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Illustration — 50% */}
+      <div className={`w-full lg:w-1/2 flex items-center justify-center transition-all duration-700 delay-200 ease-out
+        ${visible ? "opacity-100 scale-100" : reverse ? "opacity-0 -translate-x-8 scale-95" : "opacity-0 translate-x-8 scale-95"}`}>
+        <div style={{ width: "100%", maxWidth: "440px" }}>
+          {illustration}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeatureSlider() {
+  return (
+    <section className="py-8 px-8" style={{ backgroundColor: "#e3d6bc" }}>
+      <div className="max-w-screen-xl mx-auto">
+        <FeatureSection
+          tag=""
+          headline={<>Grow your agent <span className="text-[#4e8565]">Farm</span> — deploy to your own infrastructure, scale up or down, and stay in full control.<p className="text-base font-normal text-[#666] mt-6">While your AI agents run your business, maybe it's time to start a real farm and offset that carbon footprint.</p></>}
+          body=""
+          bullets={[]}
+          illustration={<AgentCows className="w-full" />}
+          reverse
+        />
+
+        <div className="h-px bg-[#cfc4aa] opacity-50" />
+
+        <FeatureSection
+          tag=""
+          headline={<>Pre-configure agents, save them to your <span className="text-[#4e8565]">Library</span> — deploy to a farm or run independently whenever you need them.<p className="text-base font-normal text-[#666] mt-6">And once your library is stacked with powerful agents, maybe curl up with an actual bestseller from your favourite bookshop.</p></>}
+          body=""
+          bullets={[]}
+          illustration={<AgentLibrary className="w-full" />}
+        />
+      </div>
+    </section>
+  );
+}
 function Platform() {
   const points = [
     { icon: Bot, title: "Agent Library", body: "Create and configure agents independently. Store system prompts, toolkits, LLM configs and trigger rules as reusable assets. Deploy to any farm when ready." },
@@ -408,6 +501,7 @@ export default function LandingPage() {
       <Nav />
       <Hero />
       <Problem />
+      <FeatureSlider />
       <Platform />
       <HowItWorks />
       <A2A />

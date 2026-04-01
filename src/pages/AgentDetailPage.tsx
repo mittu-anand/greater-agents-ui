@@ -376,7 +376,22 @@ function ConfigTab({ agent }: { agent: import("../types").Agent }) {
     system_prompt: agent.system_prompt,
     temperature: agent.temperature,
     purpose_tag: agent.purpose_tag,
+    framework: agent.framework,
+    config: agent.config,
   });
+  const [configStr, setConfigStr] = useState(JSON.stringify(agent.config, null, 2));
+  const [jsonError, setJsonError] = useState("");
+
+  const handleConfigChange = (val: string) => {
+    setConfigStr(val);
+    try {
+      const parsed = JSON.parse(val);
+      setForm(f => ({ ...f, config: parsed }));
+      setJsonError("");
+    } catch (e) {
+      setJsonError((e as Error).message);
+    }
+  };
 
   const updateMut = useMutation({
     mutationFn: (d: typeof form) => updateAgent(agent.id, d),
@@ -413,7 +428,7 @@ function ConfigTab({ agent }: { agent: import("../types").Agent }) {
             </Button>
           ) : (
             <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ name: agent.name, description: agent.description, system_prompt: agent.system_prompt, temperature: agent.temperature, purpose_tag: agent.purpose_tag }); }}>
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ name: agent.name, description: agent.description, system_prompt: agent.system_prompt, temperature: agent.temperature, purpose_tag: agent.purpose_tag, framework: agent.framework, config: agent.config }); }}>
                 <X size={12} /> Cancel
               </Button>
               <Button size="sm" onClick={() => updateMut.mutate(form)} disabled={updateMut.isPending}>
@@ -443,9 +458,20 @@ function ConfigTab({ agent }: { agent: import("../types").Agent }) {
             </div>
             <div>
               <label className="text-xs font-medium text-(--color-text-sub) block mb-1">Temperature: {form.temperature}</label>
-              <input type="range" min={0} max={1} step={0.1} value={form.temperature}
+              <input type="range" min="0" max="1" step="0.1" value={form.temperature}
                 onChange={e => setForm(f => ({ ...f, temperature: parseFloat(e.target.value) }))}
                 className="w-full accent-(--color-accent)" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-(--color-text-sub) block mb-1">
+                Framework Configuration (JSON)
+              </label>
+              <textarea
+                value={configStr}
+                onChange={(e) => handleConfigChange(e.target.value)}
+                className={`w-full bg-(--color-bg) border ${jsonError ? "border-red-500" : "border-(--color-border)"} rounded-lg px-3 py-2 text-xs font-mono text-(--color-text) focus:outline-none focus:ring-2 focus:ring-(--color-accent) h-48 resize-none`}
+              />
+              {jsonError && <p className="text-[10px] text-red-500 mt-1">Invalid JSON: {jsonError}</p>}
             </div>
           </div>
         ) : (
@@ -454,7 +480,14 @@ function ConfigTab({ agent }: { agent: import("../types").Agent }) {
             <Row label="Purpose">{agent.purpose_tag}</Row>
             <Row label="Provider">{agent.provider}</Row>
             <Row label="Model">{agent.model_name}</Row>
+            <Row label="Framework">{agent.framework}</Row>
             <Row label="Temperature">{agent.temperature}</Row>
+            <div className="mt-2">
+              <p className="text-xs text-(--color-muted) mb-1">Framework Config</p>
+              <pre className="text-[10px] font-mono text-(--color-text) bg-(--color-bg) p-2 rounded border border-(--color-border) overflow-x-auto">
+                {JSON.stringify(agent.config, null, 2)}
+              </pre>
+            </div>
           </div>
         )}
       </div>
